@@ -3,6 +3,8 @@ package shortestpath;
 import java.io.File;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -28,26 +30,38 @@ public class ShortestPath {
      */
     public static void main(String[] args) {
         
-        Vertex vertex;
-        VertexList vertices;
+        Vertex begin;
+        Vertex end;
+        VertexList vertexList;
         Adjacency adjacency;
-        AdjacencyMatrix adjacencies;
+        AdjacencyMatrix adjacencyMatrix;
         BlockedLane blockedLane;
         BlockedLaneList blockedLaneList;
+        Lane lane;
+        Lane aLane;
+        Map vertices;
+        Map lanes;
+        Map blockedLanes;
+        int nbLanes;
+        int nbBlockedLanes;
         
         try {
-            vertex = objectMapper.readValue(new File("vertex.json"), Vertex.class);
-            System.out.println(vertex);
+            begin = objectMapper.readValue(new File("vertex.json"), Vertex.class);
+            System.out.println(begin);
+            end = new Vertex();
+            end.setId("2");
+            end.setX(128);
+            end.setY(128);
             
-            vertices = new VertexList();
-            vertices.add(vertex);
-            vertices.add(vertex);
-            System.out.println("Nombre de vertex : " + vertices.size());
-            json = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(vertices);
+            vertexList = new VertexList();
+            vertexList.add(begin);
+            vertexList.add(end);
+            System.out.println("Nombre de vertex : " + vertexList.size());
+            json = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(vertexList);
             System.out.println("vertexList (json)=" + json);
 
-            vertices = objectMapper.readValue(new File("vertices.json"), VertexList.class);
-            System.out.println("Nombre de vertex : " + vertices.size());
+            vertexList = objectMapper.readValue(new File("vertices.json"), VertexList.class);
+            System.out.println("Nombre de vertex : " + vertexList.size());
             
             adjacency = new Adjacency();
             adjacency.setId("1");
@@ -58,8 +72,8 @@ public class ShortestPath {
             json = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(adjacency);
             System.out.println("adjacency (json)=" + json);
 
-            adjacencies = objectMapper.readValue(new File("adjacencyMatrix.json"), AdjacencyMatrix.class);
-            System.out.println("Nombre d'adjacents : " + adjacencies.size());
+            adjacencyMatrix = objectMapper.readValue(new File("adjacencyMatrix.json"), AdjacencyMatrix.class);
+            System.out.println("Nombre d'adjacents : " + adjacencyMatrix.size());
             
             blockedLane = new BlockedLane();
             blockedLane.setBegin("60");
@@ -69,6 +83,45 @@ public class ShortestPath {
             
             blockedLaneList = objectMapper.readValue(new File("blockedLanes.json"), BlockedLaneList.class);
             System.out.println("Nombre de voie(s) bloquée(s) : " + blockedLaneList.size());
+            
+            lane = new Lane(begin, end);
+            json = objectMapper.writerWithDefaultPrettyPrinter().writeValueAsString(lane);
+            System.out.println("blockedLane (json)=" + json + ", " + lane);
+            
+            vertices = new HashMap();
+            for (Vertex v: vertexList) {
+                vertices.put(v.getId(), v);
+            }
+            
+            lanes = new HashMap();
+            nbLanes = 0;
+            for (Adjacency a: adjacencyMatrix) {
+                if (vertices.containsKey(a.getId())) {
+                    begin = (Vertex) vertices.get(a.getId());
+                    for (String id: a.getNeighbors()) {
+                        end = (Vertex) vertices.get(id);
+                        nbLanes++;
+                        lane = new Lane(begin, end);
+                        lanes.put(lane.getId(), lane);
+                    }
+                }
+            }
+            System.out.println("Nombre de voie(s) : " + nbLanes);
+            
+            nbBlockedLanes = 0;
+            for (BlockedLane b: blockedLaneList) {
+                begin = (Vertex) vertices.get(b.getBegin());
+                end = (Vertex) vertices.get(b.getEnd());
+                aLane = new Lane(begin, end);
+                if (lanes.containsKey(aLane.getId())) {
+                    nbBlockedLanes++;
+                    lane = (Lane) lanes.get(aLane.getId());
+                    lane.setBlocked(true);
+                }
+            }
+            System.out.println("Nombre de voie(s) bloquée(s): " + nbBlockedLanes);
+            
+            lanes.forEach((k,v)->System.out.println(v));
             
         } catch (IOException exception) {
             Logger.getLogger(ShortestPath.class.getName()).log(Level.SEVERE, null, exception);
